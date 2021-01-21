@@ -1,6 +1,9 @@
 package utils
 
-import "github.com/go-redis/redis"
+import (
+	"github.com/go-redis/redis"
+	"fmt"
+)
 
 var redisdb *redis.Client
 
@@ -19,11 +22,14 @@ func GetRedisDb() *redis.Client {
 func CheckExist(key string) bool {
 	cmd := redisdb.Get(key)
 	if cmd.Err() == redis.Nil {
+		fmt.Println(cmd.Err())
 		return false
 	}
 	if cmd.Val() != "" {
+		fmt.Println(cmd.Val())
 		return true
 	} else {
+		fmt.Println(cmd.Val())
 		return false
 	}
 }

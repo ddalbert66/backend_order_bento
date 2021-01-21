@@ -12,5 +12,6 @@ type User struct {
 	Pwd       string
 	SessionId string
 	LoginTime *time.Time `gorm:"type:time"`
+	//gorm.Model 其包括字段 ID、CreatedAt、UpdatedAt、DeletedAt
 	gorm.Model
 }
