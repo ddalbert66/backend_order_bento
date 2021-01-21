@@ -15,3 +15,10 @@ type User struct {
 	//gorm.Model 其包括字段 ID、CreatedAt、UpdatedAt、DeletedAt
 	gorm.Model
 }
+
+type UserResponse struct {
+	ID        uint
+	Name      string
+	LoginTime string
+	CreatedAt string
+}
