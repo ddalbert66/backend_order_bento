@@ -72,3 +72,109 @@
 - 用於快速部屬長連線通訊協定
 - 用於即時回傳訊息給用戶
 - 用於即時給前端新增好友通知、新群組通知等等提示訊息
+
+
+## 功能簡介
+
+### 1. 註冊
+
+![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/02.註冊頁面.jpg) 
+> /src/controller/userController.go Register
+
+```
+	// 取得前端請求
+	var data userReq
+	err := ctx.Bind(&data)	
+	if err != nil {
+		zapLog.ErrorW("register error!:", err)
+		return
+	}
+	resp := make(gin.H)
+	user := userService.QueryUserByName(data.Name)
+	zapLog.WriteLogInfo("user register", zap.String("name", user.Name))
+
+	// 判斷帳號是否可註冊，並回傳json訊息給予前端
+	if user.ID != 0 {
+		resp["msg"] = "已註冊的帳號"
+		resp["code"] = "error"
+	} else {
+		user.Name = data.Name
+		user.Pwd = data.Password
+		userService.Insert(user)
+		resp["msg"] = "註冊成功"
+	}
+	ctx.JSON(http.StatusOK, resp)
+```
+
+### 2. 登入
+
+![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/01.登入頁面.jpg) 
+
+- 登入主要為驗證使用者輸入資料正確，以及存入REDIS和用戶端cookie
+> /src/controller/userController.go Login
+```
+...
+user := userService.QueryUserByName(data.Name)  // 由user.userService查詢DB
+if user.ID != 0 { 								// 若不存在則登入失敗
+	if user.Pwd != data.Password { /* 密碼檢查 start */
+		ctx.JSON(http.StatusOK, gin.H{
+			"msg":  "密碼錯誤",
+			"code": "error",
+		})
+		return
+	}
+
+	user.SessionId = uuid.New().String()		//產生新的UUID
+	... /* 解析部分資料 */
+	redisdb.Set(constant.LoginKey+user.SessionId, userJson, time.Hour*3) 				//資料放入redis緩存 存活時間三小時
+	redisdb.HSet(constant.LoginOnlineHash, constant.LoginKey+user.SessionId, userJson)	//資料放入在線會員清單
+	ctx.SetCookie("sessionId", user.SessionId, int(time.Hour*3), "/", "", false, true)	//資料放入用戶
+...
+```
+
+### 3. 中間件驗證登入狀態
+
+> - 設定於所有登入後API，由/src/middleware/loginCheck.go驗證是否登入狀態
+
+```
+	//非登入時的輸出狀態
+	var out gin.H = gin.H{
+		"code": "notLogin",
+		"msg":  "尚未登入",
+	}
+
+...
+	data, err := ctx.Cookie("sessionId") 			//讀取用戶cookie
+
+	if err != nil {
+		zapLog.ErrorW("login check error!:", err)
+		ctx.JSON(http.StatusOK, out)
+		ctx.Abort()									//Abort: 不繼續執行其餘handler
+		return
+	}
+
+	// 存取redsi 若已經有資料且可轉models.User則Pass
+	redisdb := utils.GetRedisDb()
+	cmd := redisdb.Get(constant.LoginKey + data)
+	if cmd.Err() != nil || cmd.Val() == "" {		//無登入資訊判定為非登入
+		fmt.Printf("err: %v , value %v\n", cmd.Err(), cmd.Val())
+		ctx.JSON(http.StatusOK, out)
+		ctx.Abort()
+		return
+	} else {
+		redisdb.Expire(constant.LoginKey, time.Hour*3) 	//若驗證通過則延長登入時效三小時
+		var user models.User
+		err := json.Unmarshal([]byte(cmd.Val()), &user)	//從redis中取得的user資料解析為物件
+		if err != nil {
+			zapLog.ErrorW("login check err!", err)
+			ctx.Abort()
+			return
+		}
+		ctx.Set("user", user)  // 存入gin.context資料 此流程後續任何handler皆可取用使用者登入資訊
+	}
+	ctx.Next() //繼續執行其餘handler
+```
+
+- 若驗證不通過 前端接收回傳json判斷code為notLogin時 則出現彈窗並跳轉到登入頁面
+
+![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/04.未登入提示.jpg)
