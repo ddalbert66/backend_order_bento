@@ -74,11 +74,13 @@
 - 用於即時給前端新增好友通知、新群組通知等等提示訊息
 
 
-## 功能簡介
+## 功能介紹
 
 ### 1. 註冊
 
 ![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/02.註冊頁面.jpg) 
+
+- 用戶註冊 簡易的帳號密碼即可註冊 未來考慮增加驗證碼增加複雜度以及防機器人註冊
 > /src/controller/userController.go Register
 
 ```
@@ -126,15 +128,30 @@ if user.ID != 0 { 								// 若不存在則登入失敗
 
 	user.SessionId = uuid.New().String()		//產生新的UUID
 	... /* 解析部分資料 */
-	redisdb.Set(constant.LoginKey+user.SessionId, userJson, time.Hour*3) 				//資料放入redis緩存 存活時間三小時
+	redisdb.Set(constant.LoginKey+user.SessionId, userJson, time.Hour*3)				//資料放入redis緩存 存活時間三小時
 	redisdb.HSet(constant.LoginOnlineHash, constant.LoginKey+user.SessionId, userJson)	//資料放入在線會員清單
 	ctx.SetCookie("sessionId", user.SessionId, int(time.Hour*3), "/", "", false, true)	//資料放入用戶
+	...
+	userService.UpdateLoginTime(user)	//將登入資訊寫回DB
+	loginRecordService.Insert(ctx.Request, user, constant.Login) //將登入紀錄存入DB(內部由goroutine達成寫入DB減少耗時)
 ...
 ```
 
 ### 3. 中間件驗證登入狀態
 
-> - 設定於所有登入後API，由/src/middleware/loginCheck.go驗證是否登入狀態
+- 設定於所有登入後API，於gin中設定好的中間件，驗證是否登入狀態
+> /src/middleware/loginCheck.go LoginCheck
+
+```
+	// src/server/server.go
+	...
+	//中間件設定
+	{
+		router.Use(middleware.Common)     //登入中間件
+		router.Use(middleware.LoginCheck) //登入中間件 <--由此設定router中間件
+	}
+	...
+```
 
 ```
 	//非登入時的輸出狀態
@@ -142,21 +159,20 @@ if user.ID != 0 { 								// 若不存在則登入失敗
 		"code": "notLogin",
 		"msg":  "尚未登入",
 	}
-
 ...
-	data, err := ctx.Cookie("sessionId") 			//讀取用戶cookie
+	data, err := ctx.Cookie("sessionId")	//讀取用戶cookie
 
 	if err != nil {
 		zapLog.ErrorW("login check error!:", err)
 		ctx.JSON(http.StatusOK, out)
-		ctx.Abort()									//Abort: 不繼續執行其餘handler
+		ctx.Abort()	//Abort: 不繼續執行其餘handler
 		return
 	}
 
 	// 存取redsi 若已經有資料且可轉models.User則Pass
 	redisdb := utils.GetRedisDb()
 	cmd := redisdb.Get(constant.LoginKey + data)
-	if cmd.Err() != nil || cmd.Val() == "" {		//無登入資訊判定為非登入
+	if cmd.Err() != nil || cmd.Val() == "" {	//無登入資訊判定為非登入
 		fmt.Printf("err: %v , value %v\n", cmd.Err(), cmd.Val())
 		ctx.JSON(http.StatusOK, out)
 		ctx.Abort()
@@ -178,3 +194,45 @@ if user.ID != 0 { 								// 若不存在則登入失敗
 - 若驗證不通過 前端接收回傳json判斷code為notLogin時 則出現彈窗並跳轉到登入頁面
 
 ![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/04.未登入提示.jpg)
+
+### 4. 用戶頁面
+
+- 可查看所有用戶帳號以及註冊時間、最後登入時間
+
+![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/03.用戶管理頁面.jpg)
+
+```
+	func QueryUser(ctx *gin.Context) {
+		var req map[string]interface{}
+		err := ctx.Bind(&req)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		users, count := userService.QueryUser(req)	//從DB查詢資料(含分頁參數)
+		userResps := composeUserResp(users)	//組合回傳資料
+		ctx.JSON(http.StatusOK, gin.H{
+			"msg":       "查詢成功",
+			"data":      &userResps,
+			"dataCount": count,
+		})
+	}
+
+	...
+
+	/* 組合查詢用戶回傳資料 (過濾掉不必要的參數 如密碼，並且自定義轉換時間參數)*/
+	func composeUserResp(us []userDao.User) []models.UserResponse {
+		urs := make([]models.UserResponse, 0, len(us))
+		var ursp models.UserResponse
+		for _, user := range us {
+			ursp = models.UserResponse{
+				ID:        user.ID,
+				Name:      user.Name,
+				LoginTime: utils.TimeToString(user.LoginTime),
+				CreatedAt: utils.TimeToString(&user.CreatedAt),
+			}
+			urs = append(urs, ursp)
+		}
+	return urs
+}
+```
