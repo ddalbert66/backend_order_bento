@@ -298,6 +298,6 @@ ctx.JSON(http.StatusOK, gin.H{
 - 可進入聊天室房間，進行不同房間之間的溝通對話，採用websocket長連線，前端可即時收到新訊息
 > /src/controller/imCtrl/imController.go
 
-![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/06.聊天室演示.jpg)
+![](https://github.com/ddalbert66/backend_order_bento/raw/master/resource/image/07.聊天室演示.jpg)
 
 利用goroutine監聽每個成功連接的用戶，會在ControllRegister裡接收註冊/註銷的用戶，寫到全域管理方法
