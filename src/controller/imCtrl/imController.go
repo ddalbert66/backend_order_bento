@@ -53,7 +53,6 @@ func ConnectHandler(ctx *gin.Context) {
 	}
 	if value, exist := ctx.Get("user"); exist {
 		if user, ok := value.(models.User); ok {
-			zapLog.WriteLogInfo("connect successs!!")
 			cli := &Client{
 				UserID: user.ID,
 				Name:   user.Name,
@@ -72,14 +71,15 @@ func handleMessage(c *Client) {
 	defer func() {
 		if err := recover(); err != nil {
 			wsManager.UnRegister <- c
+			c.Conn.Close()
 		}
 	}()
 
 	for {
-		// err := conn.WriteMessage(websocket.BinaryMessage, []byte("connect success!!"))\
-		_, message, err := c.Conn.ReadMessage()
-		if err != nil {
-			zapLog.PanicW("read data error", err)
+		messageType, message, err := c.Conn.ReadMessage()
+		if err != nil || messageType == websocket.CloseMessage {
+			zapLog.WriteLogPanic("close connect", zap.String("user:", c.Name))
+			break
 		}
 		go boardCast(message, c)
 	}
@@ -110,8 +110,7 @@ func (manager *Manager) ControllRegister() {
 		select {
 		// 註冊
 		case client := <-manager.Register:
-			zapLog.WriteLogInfo("client connect! userId:", zap.Uint("userId", client.UserID))
-			zapLog.WriteLogInfo("register", zap.Uint("client", client.UserID), zap.String("group", client.Group))
+			zapLog.WriteLogInfo("register", zap.Uint("userId", client.UserID), zap.String("group", client.Group))
 
 			manager.Lock.Lock()
 			if manager.Group[client.Group] == nil {

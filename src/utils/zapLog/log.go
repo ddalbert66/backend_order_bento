@@ -57,6 +57,7 @@ func definedTimeFormat(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	layout := "2006-01-02 15:04:05.999"
 	if enc, ok := enc.(appendTimeEncoder); ok {
 		enc.AppendTimeEncoder(t, layout)
+		return
 	}
 	enc.AppendString(t.Format(layout))
 }
