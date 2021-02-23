@@ -30,8 +30,9 @@ CREATE TABLE bento.food (
   KEY idx_food_deleted_at (deleted_at)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
-CREATE TABLE bento.OB_TB_ENUM_TYPE (
-	ENUM_TYPE_OID			bigint NOT NULL COMMENT '系統參數類別識別號',
+
+CREATE TABLE bento.ENUM_TYPE (
+	ID			bigint NOT NULL COMMENT '系統參數類別識別號',
 	CODE					varchar(100) NOT NULL COMMENT '代碼',
 	NAME					varchar(100) NOT NULL COMMENT '名稱',
 	create_user varchar(100)  NOT NULL COMMENT '建立資料使用者',
@@ -40,15 +41,15 @@ CREATE TABLE bento.OB_TB_ENUM_TYPE (
 	updated_at timestamp(6) NULL DEFAULT NULL COMMENT '修改資料日期',
 	deleted_at timestamp(6) NULL DEFAULT NULL COMMENT '刪除資料日期',
 	VERSION					int NOT NULL COMMENT '版本',
-	PRIMARY KEY (ENUM_TYPE_OID),
+	PRIMARY KEY (ID),
 	UNIQUE KEY EWP_UQ1_ENUM_TYPE (CODE),
-	KEY idx_ENUM_TYPE_id (ENUM_TYPE_OID),
+	KEY idx_ENUM_TYPE_id (ID),
 	KEY idx_ENUM_TYPE_deleted_at (deleted_at)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE bento.OB_TB_ENUMERATION (
-	ENUM_OID				bigint NOT NULL COMMENT '系統參數類別識別號',
-	ENUM_TYPE_OID			bigint NOT NULL COMMENT '系統參數類別識別號',
+CREATE TABLE bento.ENUMERATION (
+	ID				bigint NOT NULL COMMENT '系統參數類別識別號',
+	ENUM_TYPE_ID			bigint NOT NULL COMMENT '系統參數類別識別號',
 	CODE					varchar(100) NOT NULL COMMENT '代碼',
 	NAME					varchar(100) NOT NULL COMMENT '名稱',
 	create_user varchar(100)  NOT NULL COMMENT '建立資料使用者',
@@ -57,8 +58,9 @@ CREATE TABLE bento.OB_TB_ENUMERATION (
 	updated_at timestamp(6) NULL DEFAULT NULL COMMENT '修改資料日期',
 	deleted_at timestamp(6) NULL DEFAULT NULL COMMENT '刪除資料日期',
 	VERSION					int NOT NULL COMMENT '版本',
-	PRIMARY KEY (ENUM_OID),
+	PRIMARY KEY (ID),
 	UNIQUE KEY EWP_UQ1_ENUM (CODE),
-	KEY idx_ENUM_id (ENUM_OID),
+	FOREIGN KEY(ENUM_TYPE_ID) REFERENCES ENUM_TYPE(ID) ON DELETE NO ACTION ON UPDATE NO ACTION ,
+	KEY idx_ENUM_id (ID),
 	KEY idx_ENUM_deleted_at (deleted_at)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

@@ -7,6 +7,7 @@ import (
 
 	"orderbento/src/dao/storeDao"
 	"orderbento/src/models"
+	"orderbento/src/service/enumService"
 	"orderbento/src/service/storeService"
 	"orderbento/src/utils"
 
@@ -81,9 +82,17 @@ func QueryStore(ctx *gin.Context) {
 	}
 	stores, count := storeService.QueryStore(req)
 	storeReq := composeStoreResp(stores)
+
+	enumType := enumService.QueryByEnumTypeCode("regionEnumType")
+
+	for _, enum := range enumType.Enums {
+		fmt.Println(enum.ID) // 1,2,3
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"msg":       "查詢商家成功",
 		"data":      &storeReq,
+		"enumData":  &enumType,
 		"dataCount": count,
 	})
 }
