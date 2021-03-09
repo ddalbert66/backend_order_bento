@@ -18,7 +18,7 @@ func db() *gorm.DB {
 
 func QueryByEnumTypeCode(enumTypeCode string) (et EnumType) {
 
-	db().Preload("Enums").Find(&et)
+	db().Preload("Enums").Table("enum_type").Find(&et)
 	fmt.Println(et)
 
 	return et

@@ -3,12 +3,12 @@ package controller
 import (
 	"fmt"
 	"net/http"
-	"strconv"
-
 	"orderbento/src/dao/storeDao"
 	"orderbento/src/models"
+	"orderbento/src/service/enumService"
 	"orderbento/src/service/storeService"
 	"orderbento/src/utils"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,11 +79,19 @@ func QueryStore(ctx *gin.Context) {
 		fmt.Println(err)
 		return
 	}
+
+	enumType := enumService.QueryByEnumTypeCode("regionEnumType")
+
+	for _, enum := range enumType.Enums {
+		fmt.Println(enum.ID) // 1,2,3
+	}
+
 	stores, count := storeService.QueryStore(req)
 	storeReq := composeStoreResp(stores)
 	ctx.JSON(http.StatusOK, gin.H{
 		"msg":       "查詢商家成功",
 		"data":      &storeReq,
+		"enumData":  &enumType,
 		"dataCount": count,
 	})
 }
